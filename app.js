@@ -25,7 +25,10 @@ app.use((req, res, next) => {
   // Set CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Headers", "*");
-  res.setHeader("Access-Control-Allow-Methods", "OPTIONS, GET");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, PUT, POST, DELETE, OPTIONS"
+  );
 
   if (req.method === "OPTIONS") {
     return res.sendStatus(200);
@@ -128,12 +131,37 @@ app.put("/import/:importId", (req, res, next) => {
       res.send(importRes);
     })
     .catch(err => {
-      res.status(404).send({
-        error: "import not exist"
+      res.status(500).send({
+        error: "Server Error"
       });
     });
 });
 
+// get all imports
+app.get("/import", (req, res, next) => {
+  return Imports.find()
+    .then(result => {
+      res.status(200).send(result);
+    })
+    .catch(err => {
+      res.status(500).send({
+        error: "Server Error"
+      });
+    });
+});
+
+// get all projects
+app.get("/project", (req, res, next) => {
+  return Projects.find()
+    .then(result => {
+      res.status(200).send(result);
+    })
+    .catch(err => {
+      res.status(500).send({
+        error: "Server Error"
+      });
+    });
+});
 
 // -----------------------------
 // mongoose connection
