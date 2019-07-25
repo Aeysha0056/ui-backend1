@@ -137,6 +137,19 @@ app.put("/import/:importId", (req, res, next) => {
     });
 });
 
+app.get("/import/:importId", (req, res, next) => {
+
+  return Imports.findById(req.params.importId)
+    .then(result => {
+      res.send(result);
+    })
+    .catch(err => {
+      return res.status(404).send({
+        error: "import not found"
+      });
+    });
+});
+
 // get all imports
 app.get("/import", (req, res, next) => {
   return Imports.find()
