@@ -1,13 +1,21 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const graphqlHttp = require("express-graphql");
-const { buildSchema } = require("graphql");
 const mongoose = require("mongoose");
 
-const Tab = require("./models/tab");
-const Section = require("./models/section");
-const Value = require("./models/value");
-const View = require("./models/view");
+// graphql
+const graphQlSchema = require("./graphql/schema/index");
+const graphQlResolvers = require("./graphql/resolvers/index");
+
+// ui models
+const Tab = require("./models/ui/tab");
+const Section = require("./models/ui/section");
+const Value = require("./models/ui/value");
+const View = require("./models/ui/view");
+
+// projects models
+const Projects = require("./models/projects/projects");
+const Imports = require("./models/projects/imports");
 
 const app = express();
 
@@ -25,86 +33,113 @@ app.use((req, res, next) => {
   next();
 });
 
+// -----------------------------
+//        UI tabs data
+// -----------------------------
 app.use(
   "/graphql",
   graphqlHttp({
-    schema: buildSchema(`
-      type Tab {
-          _id: ID!
-          name: String!
-          icon: String!
-          section: Section!
-      }
-
-      type Section {
-          _id: ID!
-          name: String!
-          type: String!
-          values: [Value!]
-      }
-
-      type Value {
-          _id: ID!
-          name: String!
-          view: View
-      }
-
-      type View {
-          _id: ID!
-          type: String!
-          values: [String]
-      }
-
-      type RootQuery {
-        tabs: [Tab!]!
-        sections: [Section!]!
-        values: [Value!]!
-      }
-
-      schema {
-        query: RootQuery
-      }
-    `),
-    rootValue: {
-      tabs: () => {
-        // read data
-        return Tab.find()
-          .populate({
-            path: "section",
-            populate: {
-              path: "values",
-              populate: {
-                path: "view"
-              }
-            }
-          })
-          .then(tabs => {
-            return tabs.map(tab => {
-              return {
-                ...tab._doc,
-                section: {
-                  ...tab._doc.section._doc
-                }
-              };
-            });
-          })
-          .catch(err => {
-            throw err;
-          });
-      }
-    },
+    schema: graphQlSchema,
+    rootValue: graphQlResolvers,
     graphiql: true
   })
 );
 
+// -----------------------------
+// UI projects and imports data
+// -----------------------------
+
+app.post("/project", (req, res, next) => {
+  // body data not complete
+  if (!req.body.name)
+    return res.status(400).send({
+      error: "invalid body data"
+    });
+
+  return new Projects({
+    name: req.body.name,
+    imports: []
+  })
+    .save()
+    .then(result => {
+      res.status(201).send(result);
+    })
+    .catch(err => {
+      res.status(500).send({
+        error: "Internal Server Error"
+      });
+    });
+});
+
+// create import of spcefic project
+app.post("/import", (req, res, next) => {
+  // check req body
+  if (!req.body.projectId || !req.body.img || !req.body.store)
+    return res.status(400).send({
+      error: "invalid body data"
+    });
+
+  return Projects.findById(req.body.projectId)
+    .then(project => {
+      // create new import
+      return new Imports({
+        img: req.body.img,
+        store: req.body.store
+      })
+        .save()
+        .then(importRes => {
+          // add the import id to the project imports
+          project.imports.push(importRes);
+          project.save();
+          res.status(200).send({ project, import: importRes });
+        })
+        .catch(err => {
+          res.status(500);
+        });
+    })
+    .catch(err => {
+      res.status(400).send({
+        error: "project not exist"
+      });
+    });
+});
+
+// update import
+app.put("/import/:importId", (req, res, next) => {
+  // check req body
+  if (!req.body.store)
+    return res.status(400).send({
+      error: "invalid body data"
+    });
+
+  return Imports.findByIdAndUpdate(
+    req.params.importId,
+    {
+      store: req.body.store
+    },
+    { new: true, useFindAndModify: false }
+  )
+    .then(importRes => {
+      if (!importRes) {
+        return res.status(404).send({
+          error: "import not found"
+        });
+      }
+      res.send(importRes);
+    })
+    .catch(err => {
+      res.status(404).send({
+        error: "import not exist"
+      });
+    });
+});
+
+
+// -----------------------------
 // mongoose connection
 mongoose
   .connect(
-    `mongodb+srv://${process.env.MONGO_USER}:${
-      process.env.MONGO_PASSWORD
-    }@cluster0-vm701.mongodb.net/${
-      process.env.MONGO_DB
-    }?retryWrites=true&w=majority`,
+    `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@cluster0-vm701.mongodb.net/${process.env.MONGO_DB}?retryWrites=true&w=majority`,
     { useNewUrlParser: true }
   )
   .then(() => {
