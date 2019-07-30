@@ -10,7 +10,7 @@ const viewSchema = new Schema({
   values: [
     {
       type: String,
-      required: false
+      required: true
     }
   ]
 });

@@ -7,12 +7,6 @@ const mongoose = require("mongoose");
 const graphQlSchema = require("./graphql/schema/index");
 const graphQlResolvers = require("./graphql/resolvers/index");
 
-// ui models
-const Tab = require("./models/ui/tab");
-const Section = require("./models/ui/section");
-const Value = require("./models/ui/value");
-const View = require("./models/ui/view");
-
 // projects models
 const Projects = require("./models/projects/projects");
 const Imports = require("./models/projects/imports");
@@ -41,11 +35,12 @@ app.use((req, res, next) => {
 // -----------------------------
 app.use(
   "/graphql",
-  graphqlHttp({
-    schema: graphQlSchema,
-    rootValue: graphQlResolvers,
-    graphiql: true
-  })
+    graphqlHttp({
+      schema: graphQlSchema,
+      rootValue: graphQlResolvers,
+      customFormatErrorFn: (err) => ({ message: err.message, status: err.status }),
+      graphiql: true
+    })
 );
 
 // -----------------------------
@@ -74,7 +69,7 @@ app.post("/project", (req, res, next) => {
     });
 });
 
-// create import of spcefic project
+// create import for spcefic project
 app.post("/import", (req, res, next) => {
   // check req body
   if (!req.body.projectId || !req.body.img || !req.body.store)
@@ -181,7 +176,7 @@ app.get("/project", (req, res, next) => {
 mongoose
   .connect(
     `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@cluster0-vm701.mongodb.net/${process.env.MONGO_DB}?retryWrites=true&w=majority`,
-    { useNewUrlParser: true }
+    { useNewUrlParser: true, useFindAndModify: false }
   )
   .then(() => {
     app.listen(5000);

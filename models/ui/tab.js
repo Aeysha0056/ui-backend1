@@ -9,7 +9,7 @@ const tabSchema = new Schema({
   },
   icon: {
     type: String,
-    required: true
+    required: false
   },
   section: {
     type: Schema.Types.ObjectId,
