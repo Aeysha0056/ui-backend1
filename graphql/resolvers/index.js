@@ -133,7 +133,7 @@ module.exports = {
   },
   editTab: args => {
     return Tab.findByIdAndUpdate(
-      args.id,
+      mongoose.Types.ObjectId(args.id),
       {
         name: args.name
       },
